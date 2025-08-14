@@ -1,27 +1,43 @@
-from typing import Union
+"""Discord bot that reacts to new messages with ❌ and deletes them on reaction."""
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from __future__ import annotations
 
-app = FastAPI()
+import os
 
-
-class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: Union[bool, None] = None
+import discord
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = discord.Client(intents=intents)
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+@bot.event
+async def on_message(message: discord.Message) -> None:
+    """Add a ❌ reaction to every new message from users."""
+    if message.author.bot:
+        return
+    await message.add_reaction("❌")
 
 
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id}
+@bot.event
+async def on_reaction_add(reaction: discord.Reaction, user: discord.abc.User) -> None:
+    """Delete the message when a different user reacts with ❌."""
+    if user.bot:
+        return
+
+    if reaction.emoji == "❌" and reaction.message.author != user:
+        await reaction.message.delete()
+
+
+def main() -> None:
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        raise RuntimeError("DISCORD_TOKEN environment variable not set")
+    bot.run(token)
+
+
+if __name__ == "__main__":
+    main()
+
