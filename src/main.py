@@ -44,12 +44,16 @@ async def on_raw_reaction_add(reaction: discord.RawReactionActionEvent) -> None:
     if reaction.member and reaction.member.bot:
         print("Reaction by bot, ignoring.")
         return
+    channel = bot.get_channel(reaction.channel_id)
+    if not isinstance(channel, discord.TextChannel):
+        print("Channel not found or not a text channel.")
+        return
+    if "groce" not in channel.name.lower():
+        print("Channel name does not contain 'groce', ignoring.")
+        return
+
     if str(reaction.emoji) == "❌":
         # delete the message that was reacted to
-        channel = bot.get_channel(reaction.channel_id)
-        if not isinstance(channel, discord.TextChannel):
-            print("Channel not found or not a text channel.")
-            return
         message = await channel.fetch_message(reaction.message_id)
         await message.delete()
 
