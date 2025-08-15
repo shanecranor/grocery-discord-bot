@@ -21,6 +21,13 @@ async def on_message(message: discord.Message) -> None:
     """Add a ❌ reaction to every new message from users."""
     if message.author.bot:
         return
+    channel = message.channel
+    if not isinstance(channel, discord.TextChannel):
+        print("Message not in a text channel, ignoring.")
+        return
+    if "groce" not in channel.name.lower():
+        print("Channel name does not contain 'groce', ignoring.")
+        return
     await message.add_reaction("❌")
 
 
