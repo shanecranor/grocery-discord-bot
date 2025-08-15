@@ -1,7 +1,6 @@
 # Grocery Discord Bot
 
-This bot reacts to every new message in a server with a ❌ emoji. If anyone other than the
-message author reacts with the same emoji, the bot deletes the message.
+This bot reacts to every new message in a server with a ❌ emoji (only in channels containing the string "groce"). When a user reacts with ❌, the bot deletes the message and sends a notification to a channel named "grocery-log" in the same server if it exists.
 
 ## Setup
 
@@ -22,6 +21,5 @@ message author reacts with the same emoji, the bot deletes the message.
 4. Run the bot:
 
    ```bash
-   python main.py
+   uv run src/main.py
    ```
-
