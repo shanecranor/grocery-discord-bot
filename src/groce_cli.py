@@ -2,6 +2,7 @@ import discord
 from collections.abc import Callable, Awaitable
 from typing import cast, TypeAlias
 
+from groce_llm import filter_and_group_items
 from utils import fetch_channel_messages
 
 
@@ -63,40 +64,36 @@ async def cmd_man(message: discord.Message) -> None:
 
 
 async def cmd_list(message: discord.Message) -> None:
-    """List all grocery items. Placeholder implementation."""
-    # This is a placeholder. In a real implementation, this would fetch items from a database or other storage.
+    """
+    List all grocery items.
+    Accepts an optional 'store' argument to filter by store name.
+    Accepts an optional 'group' argument to group items by section in the store.
+    Example:
+        `list` lists all items
+        `list joes` lists items from store 'joes'
+        `list joes group` lists items from store 'joes' grouped by section
+    You must have a channel named 'grocery-list' and prefix items with the store name.
+    Example item in grocery-list: "joes: joes O's"
+    An LLM will be used to determine the section if 'group' is specified, unless the section is explicitly provided.
+    You can provide the section explicitly in your item like so:
+    > "joes: joes O's (cereal)"
+    > "woodmans: milk (dairy)"
+    In most cases the LLM should be able to figure it out on its own, but it is useful for niche items and stores with strange layouts.
+    """
     try:
         items = await fetch_channel_messages(message, "grocery-list")
     except ValueError as e:
         await message.channel.send(str(e))
         return
-    if items:
-        await message.channel.send(
-            "Grocery List:\n" + "\n".join(f"- {item}" for item in items)
-        )
-    else:
-        await message.channel.send("The grocery list is currently empty.")
+    user_args = message.content.lower().split()[1:]
+    is_grouped = False
+    store_filter = None
+    if "group" in user_args:
+        # remove 'group' from args so order doesn't matter
+        user_args.remove("group")
+        is_grouped = True
+    if len(user_args) and user_args[0]:
+        store_filter = user_args[0]
+    msg = await filter_and_group_items(items, store_filter, is_grouped)
+    await message.channel.send(msg)
     return
-
-
-async def fetch_channel_messages(
-    message: discord.Message, channel_name: str
-) -> list[str]:
-    """Fetch grocery items from the specified channel."""
-    target_channel = None
-    if not message.guild:
-        raise ValueError("Message not from a guild.")
-    for channel_item in message.guild.text_channels:
-        if channel_item.name == channel_name:
-            target_channel = channel_item
-            break
-    print(f"{channel_name} channel:", target_channel)
-    if not target_channel:
-        raise ValueError(
-            f"{channel_name} channel not found. Please create a channel with that exact name."
-        )
-    messages = [m async for m in target_channel.history(limit=100, oldest_first=False)]
-    user_messages = [m.content for m in messages if m.author == message.author]
-    if not user_messages:
-        raise ValueError(f"No messages found in {channel_name} channel.")
-    return user_messages
