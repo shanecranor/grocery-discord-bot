@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 
 import discord
 
+from groce_cli import handle_cli_message
+
 load_dotenv()
 
 
@@ -25,6 +27,9 @@ async def on_message(message: discord.Message) -> None:
     channel = message.channel
     if not isinstance(channel, discord.TextChannel):
         print("Message not in a text channel, ignoring.")
+        return
+    if "g-cli" in channel.name.lower():
+        await handle_cli_message(message)
         return
     if "groce" not in channel.name.lower():
         print("Channel name does not contain 'groce', ignoring.")
