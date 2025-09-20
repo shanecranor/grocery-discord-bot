@@ -63,7 +63,11 @@ async def cmd_man(message: discord.Message) -> None:
 async def cmd_list(message: discord.Message) -> None:
     """List all grocery items. Placeholder implementation."""
     # This is a placeholder. In a real implementation, this would fetch items from a database or other storage.
-    items = ["Apples", "Bananas", "Carrots"]
+    try:
+        items = await fetch_groceries(message)
+    except ValueError as e:
+        await message.channel.send(str(e))
+        return
     if items:
         await message.channel.send(
             "Grocery List:\n" + "\n".join(f"- {item}" for item in items)
@@ -71,3 +75,21 @@ async def cmd_list(message: discord.Message) -> None:
     else:
         await message.channel.send("The grocery list is currently empty.")
     return
+
+
+async def fetch_groceries(message: discord.Message) -> list[str]:
+    grocery_channel = None
+    if not message.guild:
+        raise ValueError("Message not from a guild.")
+    for channel_item in message.guild.text_channels:
+        if channel_item.name == "grocery-list":
+            grocery_channel = channel_item
+            break
+    print("Grocery channel:", grocery_channel)
+    if not grocery_channel:
+        raise ValueError(
+            "grocery-list channel not found. Please create a channel with that exact name."
+        )
+    messages = [m async for m in grocery_channel.history(limit=100, oldest_first=False)]
+    user_messages = [m.content for m in messages if m.author == message.author]
+    return user_messages
