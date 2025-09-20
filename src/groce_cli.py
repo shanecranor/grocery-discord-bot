@@ -64,7 +64,7 @@ async def cmd_list(message: discord.Message) -> None:
     """List all grocery items. Placeholder implementation."""
     # This is a placeholder. In a real implementation, this would fetch items from a database or other storage.
     try:
-        items = await fetch_groceries(message)
+        items = await fetch_channel_messages(message, "grocery-list")
     except ValueError as e:
         await message.channel.send(str(e))
         return
@@ -77,19 +77,24 @@ async def cmd_list(message: discord.Message) -> None:
     return
 
 
-async def fetch_groceries(message: discord.Message) -> list[str]:
-    grocery_channel = None
+async def fetch_channel_messages(
+    message: discord.Message, channel_name: str
+) -> list[str]:
+    """Fetch grocery items from the specified channel."""
+    target_channel = None
     if not message.guild:
         raise ValueError("Message not from a guild.")
     for channel_item in message.guild.text_channels:
-        if channel_item.name == "grocery-list":
-            grocery_channel = channel_item
+        if channel_item.name == channel_name:
+            target_channel = channel_item
             break
-    print("Grocery channel:", grocery_channel)
-    if not grocery_channel:
+    print(f"{channel_name} channel:", target_channel)
+    if not target_channel:
         raise ValueError(
-            "grocery-list channel not found. Please create a channel with that exact name."
+            f"{channel_name} channel not found. Please create a channel with that exact name."
         )
-    messages = [m async for m in grocery_channel.history(limit=100, oldest_first=False)]
+    messages = [m async for m in target_channel.history(limit=100, oldest_first=False)]
     user_messages = [m.content for m in messages if m.author == message.author]
+    if not user_messages:
+        raise ValueError(f"No messages found in {channel_name} channel.")
     return user_messages
