@@ -2,7 +2,7 @@ import discord
 from collections.abc import Callable, Awaitable
 from typing import cast, TypeAlias
 
-from groce_llm import filter_and_group_items
+from filter_and_group import filter_and_group_items
 from utils import fetch_channel_messages
 
 
