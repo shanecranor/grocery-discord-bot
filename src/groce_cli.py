@@ -29,7 +29,11 @@ async def handle_cli_message(message: discord.Message) -> None:
     user_cmd = message.content.split()[0].lower()
     command = commands.get(user_cmd)
     if command:
-        await command(message)
+        try:
+            await command(message)
+        except Exception as e:
+            print("Error occurred while executing command:", e)
+            await message.channel.send(f"Error executing command '{user_cmd}': {e}")
     else:
         await message.channel.send(
             "Unknown command. Type 'help' for a list of commands."
