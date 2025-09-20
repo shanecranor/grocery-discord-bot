@@ -2,6 +2,8 @@ import discord
 from collections.abc import Callable, Awaitable
 from typing import cast, TypeAlias
 
+from utils import fetch_channel_messages
+
 
 CommandFunc: TypeAlias = Callable[[discord.Message], Awaitable[None]]
 
