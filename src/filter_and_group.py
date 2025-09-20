@@ -2,6 +2,7 @@ import os
 from typing import Dict, List
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from classifier import classify_items
 
 load_dotenv()
 
@@ -40,15 +41,10 @@ async def filter_and_group_items(
             misc.append(item)
 
     if enable_llm and misc:
-        ai = await categorize_items(misc)
-        for sec, vals in ai.items():
-            parsed.setdefault(sec, []).extend(vals)
-    elif misc:
-        # Heuristic fallback only (no LLM)
-        hb = heuristic_bucket(misc)
-        for sec, vals in hb.items():
-            parsed.setdefault(sec, []).extend(vals)
-
+        # Classify remaining items with LLM
+        llm_out = await classify_items(misc)
+        for row in llm_out["items"]:
+            parsed.setdefault(row["section"], []).append(row["item"])
     lines: list[str] = []
     for section in sorted(parsed.keys()):
         lines.append(f"**{section}**")
