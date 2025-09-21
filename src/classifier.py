@@ -42,7 +42,7 @@ async def classify_items(items: list[str]) -> Dict[str, List[Dict[str, str]]]:
     }
 
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",  # supports structured outputs
+        model="openai/gpt-4o-mini",
         temperature=0.2,
         messages=[
             {
