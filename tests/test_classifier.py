@@ -26,7 +26,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from classifier import ALLOWED_AISLES as ALLOWED_SECTIONS
+from constants import ALLOWED_AISLES as ALLOWED_SECTIONS
 
 
 @pytest.mark.skipif(
@@ -58,6 +58,8 @@ async def test_classify_items_structured_output_import_and_shape():
         "tortillas": "hispanic",
         "pasta": "pasta",
         "malk": "dairy",
+        "kayl pasta": "gluten-free",
+        "kayl bagels": "gluten-free",
     }
     items = list(items_map.keys())
     print(f"[TEST] Input items: {items}")

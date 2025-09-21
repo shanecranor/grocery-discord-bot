@@ -3,6 +3,7 @@ from typing import Dict, List
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 import json
+from constants import AISLES
 
 load_dotenv()
 
@@ -10,25 +11,6 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
 )
-AISLES = {
-    "Produce": "Fresh fruits and vegetables",
-    "Bread/Bakery": "Baked goods and bread",
-    "Meat": "Fresh meats and poultry",
-    "Pasta": "Dried pasta, sauce, tomato paste, etc.",
-    "Hispanic": "Tortillas, Salsas, beans, etc.",
-    "International": "Foods from various non hispanic 'international' (from USA POV) cuisines including Asian, Indian, Middle Eastern, and more.",
-    "Cereal": "Breakfast cereals and granola",
-    "Dairy": "Milk, cheese, yogurt, and eggs",
-    "Gluten-Free": "Gluten-free products and alternatives",
-    "Beverages": "Drinks and beverages",
-    "Canned Goods": "Canned fruits, vegetables, and soups",
-    "Frozen Foods": "Frozen meals, vegetables, and desserts",
-    "Alcohol": "Beer, wine, and spirits",
-    "Pet Supplies": "Pet food and supplies",
-    "Household": "Paper goods, cleaning supplies, and toiletries",
-    "Misc": "Items that don't fit into other categories",
-}
-ALLOWED_AISLES = list(AISLES.keys())
 
 
 async def classify_items(items: list[str]) -> Dict[str, List[Dict[str, str]]]:
@@ -36,7 +18,9 @@ async def classify_items(items: list[str]) -> Dict[str, List[Dict[str, str]]]:
     Classify a list of grocery items into sections using the LLM with structured output.
     Returns a dict with an 'items' key containing a list of {'item': str, 'section': str} dicts.
     """
-    aisle_variants = [
+    # Build JSON Schema enum variants for sections. Each entry must supply a constant value
+    # and a human readable description. Explicitly annotate for type-checkers.
+    aisle_variants: List[Dict[str, str]] = [
         {"const": name, "description": desc} for name, desc in AISLES.items()
     ]
     schema = {  # type: ignore
@@ -63,7 +47,7 @@ async def classify_items(items: list[str]) -> Dict[str, List[Dict[str, str]]]:
         messages=[
             {
                 "role": "system",
-                "content": "You are a grocery store section classifier. Classify each item into the most appropriate section. DO NOT CORRECT SPELLING ERRORS, you must return EXACTLY the item text as provided.",
+                "content": "You are a grocery store section classifier. Classify each item into the most appropriate section. DO NOT CORRECT SPELLING ERRORS, you must return EXACTLY the item text as provided. If item includes 'kayl' and would normally have gluten, classify as gluten-free ",
             },
             {
                 "role": "user",
