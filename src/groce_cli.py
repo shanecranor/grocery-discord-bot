@@ -2,6 +2,7 @@ import discord
 from collections.abc import Callable, Awaitable
 from typing import cast, TypeAlias
 
+from constants import GROCE_CHANNEL_NAME
 from filter_and_group import filter_and_group_items
 from utils import fetch_channel_messages
 
@@ -94,7 +95,7 @@ async def cmd_list(message: discord.Message) -> None:
     In most cases the LLM should be able to figure it out on its own, but it is useful for niche items and stores with strange layouts.
     """
     try:
-        items = await fetch_channel_messages(message, "grocery-list")
+        items = await fetch_channel_messages(message, GROCE_CHANNEL_NAME)
     except ValueError as e:
         await message.channel.send(str(e))
         return
