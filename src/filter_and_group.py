@@ -1,11 +1,35 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple, overload, Union
 from classifier import classify_items
 from constants import AISLES
 
 
+@overload
 async def filter_and_group_items(
-    items: list[str], store: str | None, is_grouped: bool, enable_llm: bool = True
-) -> str:
+    items: list[str],
+    store: str | None,
+    is_grouped: bool,
+    enable_llm: bool = True,
+    return_mapping: bool = False,
+) -> str: ...
+
+
+@overload
+async def filter_and_group_items(
+    items: list[str],
+    store: str | None,
+    is_grouped: bool,
+    enable_llm: bool = True,
+    return_mapping: bool = True,
+) -> Tuple[str, Dict[str, List[str]]]: ...
+
+
+async def filter_and_group_items(
+    items: list[str],
+    store: str | None,
+    is_grouped: bool,
+    enable_llm: bool = True,
+    return_mapping: bool = False,
+) -> Union[str, Tuple[str, Dict[str, List[str]]]]:
     """
     If store is provided, filter items to only those from that store (prefix 'store: item').
     If is_grouped is True, group items by section.
@@ -18,7 +42,8 @@ async def filter_and_group_items(
             raise ValueError(f"No items found for store '{store}'.")
 
     if not is_grouped:
-        return "\n".join(f"- {item}" for item in items)
+        out_simple = "\n".join(f"- {item}" for item in items)
+        return (out_simple, {}) if return_mapping else out_simple
 
     # First: parse any explicit "(Section)" suffixes you already support
     parsed: Dict[str, List[str]] = {}
@@ -55,4 +80,5 @@ async def filter_and_group_items(
             ]
         lines.extend(f"- {v}" for v in parsed[section])
         lines.append("")
-    return "\n".join(lines).strip()
+    out_grouped = "\n".join(lines).strip()
+    return (out_grouped, parsed) if return_mapping else out_grouped
