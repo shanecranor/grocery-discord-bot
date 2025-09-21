@@ -1,3 +1,6 @@
+CLI_CHANNEL_NAME = "groce-cli"
+GROCE_CHANNEL_NAME = "grocery-list"
+LOG_CHANNEL_NAME = "groce-log"
 AISLES: dict[str, str] = {
     "Produce": "Fresh fruits and vegetables",
     "Bread/Bakery": "Baked goods and bread",
