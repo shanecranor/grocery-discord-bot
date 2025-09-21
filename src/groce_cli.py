@@ -3,6 +3,7 @@ from collections.abc import Callable, Awaitable
 from typing import cast, TypeAlias
 
 from constants import GROCE_CHANNEL_NAME
+import constants  # for aisles in layout test
 from filter_and_group import filter_and_group_items
 from utils import fetch_channel_messages
 
@@ -76,7 +77,11 @@ async def cmd_clear(message: discord.Message) -> None:
     """
     clear all items in the CLI channel
     """
-    await message.channel.purge()
+    # Restrict to text channels for type safety
+    if isinstance(message.channel, discord.TextChannel):
+        await message.channel.purge()
+    else:
+        await message.channel.send("Cannot purge messages in this channel type.")
     await message.channel.send("Cleared all messages in this channel.")
     return
 
@@ -114,4 +119,62 @@ async def cmd_list(message: discord.Message) -> None:
         store_filter = user_args[0]
     msg = await filter_and_group_items(items, store_filter, is_grouped)
     await message.channel.send(msg)
+    return
+
+
+class LayoutTestView(discord.ui.View):
+    """Interactive view with buttons and a dropdown to test Discord component layout.
+
+    Expires after 3 minutes (timeout). Selecting an aisle or pressing a button
+    responds ephemerally so the channel stays uncluttered.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(timeout=180)
+
+        # Build dropdown options (Discord max 25 options)
+        options: list[discord.SelectOption] = [
+            discord.SelectOption(label=label, description=desc[:90])
+            for label, desc in list(constants.AISLES.items())[:25]
+        ]
+
+        select = discord.ui.Select(  # type: ignore[call-arg]
+            placeholder="Pick an aisle",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+        async def select_callback(interaction: discord.Interaction) -> None:  # type: ignore[override]
+            await interaction.response.send_message(
+                f"You chose: {select.values[0]}", ephemeral=True
+            )
+
+        select.callback = select_callback  # type: ignore[assignment]
+        self.add_item(select)  # type: ignore[arg-type]
+
+    @discord.ui.button(label="Primary", style=discord.ButtonStyle.primary)
+    async def primary(self, interaction: discord.Interaction, button) -> None:  # type: ignore[override]
+        await interaction.response.send_message(
+            "Primary button clicked", ephemeral=True
+        )
+
+    @discord.ui.button(label="Success", style=discord.ButtonStyle.success)
+    async def success(self, interaction: discord.Interaction, button) -> None:  # type: ignore[override]
+        await interaction.response.send_message(
+            "Success button clicked", ephemeral=True
+        )
+
+    @discord.ui.button(label="Danger", style=discord.ButtonStyle.danger)
+    async def danger(self, interaction: discord.Interaction, button) -> None:  # type: ignore[override]
+        await interaction.response.send_message("Danger button clicked", ephemeral=True)
+
+
+async def cmd_layout(message: discord.Message) -> None:
+    """Send a test message with buttons and a dropdown to validate Discord UI layout.
+
+    Usage: layout
+    """
+    view = LayoutTestView()
+    await message.channel.send("Layout test: buttons below and dropdown.", view=view)
     return
