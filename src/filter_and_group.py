@@ -38,9 +38,10 @@ async def filter_and_group_items(
             parsed.setdefault(row["section"], []).append(row["item"])
     lines: list[str] = []
     # Sort sections by order in AISLES constant
+    aisle_order = list(AISLES.keys())
     sorted_sections = sorted(
         parsed.keys(),
-        key=lambda s: list(AISLES.keys()).index(s) if s in AISLES else len(AISLES),
+        key=lambda s: aisle_order.index(s) if s in AISLES else len(AISLES),
     )
     for section in sorted_sections:
         lines.append(f"**{section}**")
