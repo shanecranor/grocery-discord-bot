@@ -86,10 +86,14 @@ async def cmd_list(message: discord.Message) -> None:
     List all grocery items.
     Accepts an optional 'store' argument to filter by store name.
     Accepts an optional 'group' argument to group items by section in the store.
+    Accepts an optional 'text' argument to force a single combined message (legacy behavior).
+    If 'text' is NOT provided, items will be sent one Discord message per item (after optional grouping formatting).
     Example:
-        `list` lists all items
-        `list joes` lists items from store 'joes'
-        `list joes group` lists items from store 'joes' grouped by section
+        `list` lists all items (one message per item)
+        `list text` lists all items in one combined message
+        `list joes` lists items from store 'joes' (one message per item)
+        `list joes group` lists items from store 'joes' grouped by section (section headers + one message per item)
+        `list joes group text` lists items from store 'joes' grouped by section in a single combined message
     You must have a channel named 'grocery-list' and prefix items with the store name.
     Example item in grocery-list: "joes: joes O's"
     An LLM will be used to determine the section if 'group' is specified, unless the section is explicitly provided.
@@ -106,12 +110,28 @@ async def cmd_list(message: discord.Message) -> None:
     user_args = message.content.lower().split()[1:]
     is_grouped = False
     store_filter = None
+    force_text = False
+
+    # detect flags in any order
     if "group" in user_args:
-        # remove 'group' from args so order doesn't matter
         user_args.remove("group")
         is_grouped = True
+    if "text" in user_args:
+        user_args.remove("text")
+        force_text = True
+
     if len(user_args) and user_args[0]:
         store_filter = user_args[0]
     msg = await filter_and_group_items(items, store_filter, is_grouped)
-    await message.channel.send(msg)
+
+    if force_text:
+        await message.channel.send(msg)
+        return
+
+    # otherwise: send each "- item" line separately; preserve section headers
+    for line in msg.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        await message.channel.send(line)
     return
