@@ -57,7 +57,11 @@ async def cmd_help(message: discord.Message) -> None:
 async def cmd_man(message: discord.Message) -> None:
     """return the docstring of a given command"""
     commands = get_commands()
-    user_cmd = message.content.split()[1].lower()
+    parts = message.content.split()
+    if len(parts) < 2:
+        await message.channel.send("Usage: man <command>")
+        return
+    user_cmd = parts[1].lower()
     command = commands.get(user_cmd)
     if not command:
         await message.channel.send(f"Command '{user_cmd}' not found.")
