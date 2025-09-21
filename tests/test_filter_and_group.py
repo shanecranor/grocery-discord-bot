@@ -54,8 +54,8 @@ async def test_grouping_explicit_sections_and_order():
     out = await filter_and_group_items(
         items, store=None, is_grouped=True, enable_llm=False
     )
-    # Sections should be alphabetically sorted: Hispanic, Pasta, Produce
-    expected = "**Hispanic**\n- Tortillas\n\n**Pasta**\n- Spaghetti\n\n**Produce**\n- Bananas\n- Apples"
+    # Sections should follow order defined in AISLES constant: Produce before Pasta before Hispanic
+    expected = "**Produce**\n- Bananas\n- Apples\n\n**Pasta**\n- Spaghetti\n\n**Hispanic**\n- Tortillas"
     assert out == expected
 
 
@@ -79,9 +79,9 @@ async def test_grouping_with_llm_mock(monkeypatch):  # type: ignore
     out = await filter_and_group_items(
         items, store=None, is_grouped=True, enable_llm=True
     )
-    # Sections sorted alphabetically: Bread/Bakery, Dairy, Produce
+    # Sections should be sorted in order they appear in AISLES constant
     expected = (
-        "**Bread/Bakery**\n- Bread\n\n**Dairy**\n- Milk\n\n**Produce**\n- Bananas"
+        "**Produce**\n- Bananas\n\n**Bread/Bakery**\n- Bread\n\n**Dairy**\n- Milk"
     )
     assert out == expected
 

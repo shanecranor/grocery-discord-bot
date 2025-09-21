@@ -3,6 +3,7 @@ from typing import Dict, List
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from classifier import classify_items
+from constants import AISLES
 
 load_dotenv()
 
@@ -46,7 +47,12 @@ async def filter_and_group_items(
         for row in llm_out["items"]:
             parsed.setdefault(row["section"], []).append(row["item"])
     lines: list[str] = []
-    for section in sorted(parsed.keys()):
+    # Sort sections by order in AISLES constant
+    sorted_sections = sorted(
+        parsed.keys(),
+        key=lambda s: list(AISLES.keys()).index(s) if s in AISLES else len(AISLES),
+    )
+    for section in sorted_sections:
         lines.append(f"**{section}**")
         lines.extend(f"- {v}" for v in parsed[section])
         lines.append("")
