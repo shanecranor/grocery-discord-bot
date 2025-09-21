@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 
 import discord
 
+from constants import CLI_CHANNEL_NAME, GROCE_CHANNEL_NAME
+from groce_cli import handle_cli_message
+
 load_dotenv()
 
 
@@ -26,10 +29,13 @@ async def on_message(message: discord.Message) -> None:
     if not isinstance(channel, discord.TextChannel):
         print("Message not in a text channel, ignoring.")
         return
-    if "groce" not in channel.name.lower():
-        print("Channel name does not contain 'groce', ignoring.")
+    if CLI_CHANNEL_NAME == channel.name.lower():
+        await handle_cli_message(message)
         return
-    await message.add_reaction("❌")
+    if GROCE_CHANNEL_NAME == channel.name.lower():
+        await message.add_reaction("❌")
+        return
+    print("message not sent in the proper channel, ignoring.")
 
 
 @bot.event
@@ -41,7 +47,7 @@ async def on_raw_reaction_add(reaction: discord.RawReactionActionEvent) -> None:
         "by",
         reaction.user_id,
     )
-    """Delete athe message when a different user reacts with ❌."""
+    """Delete a message when a different user reacts with ❌."""
     if reaction.member and reaction.member.bot:
         print("Reaction by bot, ignoring.")
         return
@@ -49,8 +55,8 @@ async def on_raw_reaction_add(reaction: discord.RawReactionActionEvent) -> None:
     if not isinstance(channel, discord.TextChannel):
         print("Channel not found or not a text channel.")
         return
-    if "groce" not in channel.name.lower():
-        print("Channel name does not contain 'groce', ignoring.")
+    if GROCE_CHANNEL_NAME != channel.name.lower():
+        print(f"Channel name is not {GROCE_CHANNEL_NAME}, ignoring.")
         return
 
     if str(reaction.emoji) == "❌":
