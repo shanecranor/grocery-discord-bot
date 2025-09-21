@@ -1,16 +1,6 @@
-import os
 from typing import Dict, List
-from dotenv import load_dotenv
-from openai import AsyncOpenAI
 from classifier import classify_items
 from constants import AISLES
-
-load_dotenv()
-
-client = AsyncOpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1",
-)
 
 
 async def filter_and_group_items(
@@ -54,6 +44,14 @@ async def filter_and_group_items(
     )
     for section in sorted_sections:
         lines.append(f"**{section}**")
+        # remove prefix of store if present
+        # e.g. "joes: joes O's" -> "joes O's"
+        if store:
+            prefix = store.lower() + ":"
+            parsed[section] = [
+                item[len(prefix) :].strip() if item.lower().startswith(prefix) else item
+                for item in parsed[section]
+            ]
         lines.extend(f"- {v}" for v in parsed[section])
         lines.append("")
     return "\n".join(lines).strip()
