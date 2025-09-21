@@ -4,7 +4,7 @@ AISLES: dict[str, str] = {
     "Meat": "Fresh meats and poultry",
     "Pasta": "Dried pasta, sauce, tomato paste, etc.",
     "Hispanic": "Tortillas, Salsas, beans, etc.",
-    "International": "Foods from various non hispanic 'international' (from USA POV) cuisines including Asian, Indian, Middle Eastern, and more.",
+    "International": "Foods from various non hispanic 'international' (from USA POV) cuisines including Asian, Indian, Middle Eastern, and more. Includes rice, sauces, etc",
     "Cereal": "Breakfast cereals and granola",
     "Dairy": "Milk, cheese, yogurt, and eggs",
     "Gluten-Free": "Gluten-free products and alternatives",

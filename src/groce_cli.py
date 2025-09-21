@@ -67,6 +67,15 @@ async def cmd_man(message: discord.Message) -> None:
     await message.channel.send(command.__doc__)
 
 
+async def cmd_clear(message: discord.Message) -> None:
+    """
+    clear all items in the CLI channel
+    """
+    await message.channel.purge()
+    await message.channel.send("Cleared all messages in this channel.")
+    return
+
+
 async def cmd_list(message: discord.Message) -> None:
     """
     List all grocery items.
