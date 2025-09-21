@@ -1,5 +1,3 @@
-# tests/test_classify_items.py
-
 import os
 import sys
 import pathlib
@@ -14,7 +12,7 @@ load_dotenv()
 pytestmark = pytest.mark.anyio
 
 
-# # Force pytest-anyio to use only asyncio backend (avoids needing trio dependency)
+# Force pytest-anyio to use only asyncio backend (avoids needing trio dependency)
 @pytest.fixture(params=["asyncio"], scope="session")
 def anyio_backend(request):  # type: ignore[override]
     return request.param  # type: ignore
