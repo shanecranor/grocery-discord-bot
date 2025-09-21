@@ -49,13 +49,13 @@ async def test_grouping_explicit_sections_and_order():
         "Bananas (Produce)",
         "Apples (Produce)",
         "Spaghetti (Pasta)",
-        "Tortillas (Hispanic)",
+        "Tortillas (International)",
     ]
     out = await filter_and_group_items(
         items, store=None, is_grouped=True, enable_llm=False
     )
-    # Sections should follow order defined in AISLES constant: Produce before Pasta before Hispanic
-    expected = "**Produce**\n- Bananas\n- Apples\n\n**Pasta**\n- Spaghetti\n\n**Hispanic**\n- Tortillas"
+    # Sections should follow order defined in AISLES constant: Produce before Pasta before International
+    expected = "**Produce**\n- Bananas\n- Apples\n\n**Pasta**\n- Spaghetti\n\n**International**\n- Tortillas"
     assert out == expected
 
 

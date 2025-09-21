@@ -55,7 +55,7 @@ async def test_classify_items_structured_output_import_and_shape():
         "bread": "bread/bakery",
         "yogurt": "dairy",
         "eggs": "dairy",
-        "tortillas": "hispanic",
+        "tortillas": "international",
         "pasta": "pasta",
         "malk": "dairy",
         "kayl pasta": "gluten-free",
