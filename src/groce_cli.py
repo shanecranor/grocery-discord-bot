@@ -85,15 +85,21 @@ async def cmd_clear(message: discord.Message) -> None:
 
 
 async def cmd_list(message: discord.Message) -> None:
-    """List grocery items.
-
-    Default: ungrouped plain text list.
-    Add 'group' argument to render grouped interactive buttons (one message per aisle).
-    Optionally specify store before 'group'. Examples:
-      list
-      list joes
-      list joes group
-      list group
+    """
+    List all grocery items.
+    Accepts an optional 'store' input to filter by store name.
+    Accepts an optional 'group' argument to group items by section in the store.
+    Example:
+        `list` lists all items
+        `list joes` lists items from store 'joes'
+        `list joes group` lists items from store 'joes' grouped by section
+    You must have a channel named 'grocery-list' and prefix items with the store name.
+    Example item in grocery-list: "joes: joes O's"
+    An LLM will be used to determine the section if 'group' is specified, unless the section is explicitly provided.
+    You can provide the section explicitly in your item like so:
+    > "joes: joes O's (cereal)"
+    > "woodmans: milk (dairy)"
+    In most cases the LLM should be able to figure it out on its own, but it is useful for niche items and stores with strange layouts.
     """
     if not message.guild:
         await message.channel.send("Command must be used in a guild.")
