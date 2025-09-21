@@ -101,74 +101,66 @@ async def cmd_list(message: discord.Message) -> None:
     > "woodmans: milk (dairy)"
     In most cases the LLM should be able to figure it out on its own, but it is useful for niche items and stores with strange layouts.
     """
-    if not message.guild:
-        await message.channel.send("Command must be used in a guild.")
-        return
-    grocery_channel: discord.TextChannel | None = None
-    for ch in message.guild.text_channels:
-        if ch.name == GROCE_CHANNEL_NAME:
-            grocery_channel = ch
-            break
-    if not grocery_channel:
-        await message.channel.send(f"Channel '{GROCE_CHANNEL_NAME}' not found.")
-        return
-    original_msgs: List[discord.Message] = [
-        m
-        async for m in grocery_channel.history(limit=400, oldest_first=True)
-        if m.content.strip()
-    ]
-    if not original_msgs:
-        await message.channel.send("No grocery items found.")
-        return
-    args = message.content.split()[1:]
-    is_grouped = False
-    if any(a.lower() == "group" for a in args):
-        is_grouped = True
-        args = [a for a in args if a.lower() != "group"]
-    store_filter = args[0].lower() if args else None
 
-    item_texts = [m.content for m in original_msgs]
-    if not is_grouped:
-        text = await filter_and_group_items(
-            item_texts, store_filter, False, enable_llm=False
+    # --- helpers -----------------------------------------------------------
+    def _find_grocery_channel() -> discord.TextChannel | None:
+        if not message.guild:
+            return None
+        for ch in message.guild.text_channels:
+            if ch.name == GROCE_CHANNEL_NAME:
+                return ch
+        return None
+
+    async def _fetch_original_messages(
+        grocery_channel: discord.TextChannel,
+    ) -> List[discord.Message]:
+        return [
+            m
+            async for m in grocery_channel.history(limit=400, oldest_first=True)
+            if m.content.strip()
+        ]
+
+    def _parse_args() -> tuple[str | None, bool, list[str]]:
+        args = message.content.split()[1:]
+        is_grouped = any(a.lower() == "group" for a in args)
+        if is_grouped:
+            args = [a for a in args if a.lower() != "group"]
+        store_filter = args[0].lower() if args else None
+        return store_filter, is_grouped, args
+
+    def _build_name_to_msgs(
+        original_msgs: List[discord.Message], store_filter: str | None
+    ) -> Dict[str, List[discord.Message]]:
+        def strip_store_prefix(raw: str) -> str:
+            if store_filter and raw.lower().startswith(store_filter + ":"):
+                return raw[len(store_filter) + 1 :].strip()
+            return raw
+
+        def base_display(raw: str) -> str:
+            txt = strip_store_prefix(raw)
+            if "(" in txt and txt.endswith(")"):
+                return txt[: txt.rfind("(")].strip()
+            return txt
+
+        name_to_msgs: Dict[str, List[discord.Message]] = {}
+        for m in original_msgs:
+            key = base_display(m.content)
+            name_to_msgs.setdefault(key, []).append(m)
+        return name_to_msgs
+
+    def _order_sections(mapping: Dict[str, List[str]]) -> List[str]:
+        aisle_order = list(AISLES.keys())
+        return sorted(
+            mapping.keys(),
+            key=lambda s: aisle_order.index(s) if s in AISLES else len(AISLES),
         )
-        await message.channel.send(text or "(empty)")
-        return
 
-    grouped_text, raw_mapping = await filter_and_group_items(  # type: ignore
-        item_texts, store_filter, True, enable_llm=True, return_mapping=True
-    )
-    from typing import cast as _cast
-
-    mapping = _cast(Dict[str, List[str]], raw_mapping)
-
-    # Build display-name -> list of original messages for duplicate handling
-    def strip_store_prefix(raw: str) -> str:
-        if store_filter and raw.lower().startswith(store_filter + ":"):
-            return raw[len(store_filter) + 1 :].strip()
-        return raw
-
-    def base_display(raw: str) -> str:
-        txt = strip_store_prefix(raw)
-        if "(" in txt and txt.endswith(")"):
-            return txt[: txt.rfind("(")].strip()
-        return txt
-
-    name_to_msgs: Dict[str, List[discord.Message]] = {}
-    for m in original_msgs:
-        key = base_display(m.content)
-        name_to_msgs.setdefault(key, []).append(m)
-
-    aisle_order = list(AISLES.keys())
-    ordered_sections: List[str] = sorted(
-        mapping.keys(),
-        key=lambda s: aisle_order.index(s) if s in AISLES else len(AISLES),
-    )
-
-    for section in ordered_sections:
-        items = mapping[section]
-        if not items:
-            continue
+    def _create_section_view(
+        section: str,
+        items: List[str],
+        name_to_msgs: Dict[str, List[discord.Message]],
+        grocery_channel: discord.TextChannel,
+    ) -> tuple[str, discord.ui.View]:
         view = discord.ui.View(timeout=600)
         truncated = False
         if len(items) > 25:
@@ -186,7 +178,9 @@ async def cmd_list(message: discord.Message) -> None:
             src_msg = source_list.pop(0)
 
             def make_cb(msg_id: int, msg_content: str, shown_label: str):
-                async def _cb(interaction: discord.Interaction) -> None:
+                async def _cb(
+                    interaction: discord.Interaction,
+                ) -> None:  # pragma: no cover - network interaction
                     channel = grocery_channel
                     if not channel:
                         await interaction.response.send_message(
@@ -217,12 +211,51 @@ async def cmd_list(message: discord.Message) -> None:
                 custom_id=f"groce:{src_msg.id}",
             )  # type: ignore[call-arg]
             btn.callback = make_cb(
-                msg_id=src_msg.id,
-                msg_content=src_msg.content,
-                shown_label=shown,
+                msg_id=src_msg.id, msg_content=src_msg.content, shown_label=shown
             )  # type: ignore
             view.add_item(btn)  # type: ignore[arg-type]
 
         header = f"**{section}**" + (" (truncated)" if truncated else "")
+        return header, view
+
+    # --- execution ---------------------------------------------------------
+    if not message.guild:
+        await message.channel.send("Command must be used in a guild.")
+        return
+
+    grocery_channel = _find_grocery_channel()
+    if not grocery_channel:
+        await message.channel.send(f"Channel '{GROCE_CHANNEL_NAME}' not found.")
+        return
+
+    original_msgs = await _fetch_original_messages(grocery_channel)
+    if not original_msgs:
+        await message.channel.send("No grocery items found.")
+        return
+
+    store_filter, is_grouped, _ = _parse_args()
+    item_texts = [m.content for m in original_msgs]
+
+    if not is_grouped:
+        text = await filter_and_group_items(
+            item_texts, store_filter, False, enable_llm=False
+        )
+        await message.channel.send(text or "(empty)")
+        return
+
+    grouped_text, raw_mapping = await filter_and_group_items(  # type: ignore
+        item_texts, store_filter, True, enable_llm=True, return_mapping=True
+    )
+    from typing import cast as _cast
+
+    mapping = _cast(Dict[str, List[str]], raw_mapping)
+    name_to_msgs = _build_name_to_msgs(original_msgs, store_filter)
+    for section in _order_sections(mapping):
+        items = mapping[section]
+        if not items:
+            continue
+        header, view = _create_section_view(
+            section, list(items), name_to_msgs, grocery_channel
+        )
         await message.channel.send(header, view=view)
     return
