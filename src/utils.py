@@ -17,8 +17,7 @@ async def fetch_channel_messages(
         raise ValueError(
             f"{channel_name} channel not found. Please create a channel with that exact name."
         )
-    messages = [m async for m in target_channel.history(limit=100, oldest_first=False)]
-    user_messages = [m.content for m in messages if m.author == message.author]
-    if not user_messages:
+    messages = [m async for m in target_channel.history(limit=100, oldest_first=True)]
+    if not messages:
         raise ValueError(f"No messages found in {channel_name} channel.")
-    return user_messages
+    return [m.content for m in messages]
