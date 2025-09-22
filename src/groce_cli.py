@@ -4,6 +4,7 @@ from typing import cast, TypeAlias, Dict, List
 
 from constants import GROCE_CHANNEL_NAME, AISLES
 from filter_and_group import filter_and_group_items
+from utils import create_section_view
 
 
 CommandFunc: TypeAlias = Callable[[discord.Message], Awaitable[None]]
@@ -155,69 +156,6 @@ async def cmd_list(message: discord.Message) -> None:
             key=lambda s: aisle_order.index(s) if s in AISLES else len(AISLES),
         )
 
-    def _create_section_view(
-        section: str,
-        items: List[str],
-        name_to_msgs: Dict[str, List[discord.Message]],
-        grocery_channel: discord.TextChannel,
-    ) -> tuple[str, discord.ui.View]:
-        view = discord.ui.View(timeout=600)
-        truncated = False
-        if len(items) > 25:
-            items = items[:25]
-            truncated = True
-        dup_counts: Dict[str, int] = {}
-        for item_name in items:
-            base = item_name
-            dup_counts[base] = dup_counts.get(base, 0) + 1
-            shown = f"{base} ({dup_counts[base]})" if dup_counts[base] > 1 else base
-            safe_label = (shown[:80] + "…") if len(shown) > 81 else shown
-            source_list = name_to_msgs.get(base, [])
-            if not source_list:
-                continue
-            src_msg = source_list.pop(0)
-
-            def make_cb(msg_id: int, msg_content: str, shown_label: str):
-                async def _cb(
-                    interaction: discord.Interaction,
-                ) -> None:  # pragma: no cover - network interaction
-                    channel = grocery_channel
-                    if not channel:
-                        await interaction.response.send_message(
-                            "Channel missing.", ephemeral=True
-                        )
-                        return
-                    try:
-                        target = await channel.fetch_message(msg_id)
-                        if target.content == msg_content:
-                            await target.delete()
-                            await interaction.response.send_message(
-                                f"Removed: {shown_label}", ephemeral=True
-                            )
-                        else:
-                            await interaction.response.send_message(
-                                "Item changed; not removed.", ephemeral=True
-                            )
-                    except Exception:
-                        await interaction.response.send_message(
-                            "Original not found.", ephemeral=True
-                        )
-
-                return _cb
-
-            btn = discord.ui.Button(  # type: ignore
-                label=safe_label,
-                style=discord.ButtonStyle.secondary,
-                custom_id=f"groce:{src_msg.id}",
-            )  # type: ignore[call-arg]
-            btn.callback = make_cb(
-                msg_id=src_msg.id, msg_content=src_msg.content, shown_label=shown
-            )  # type: ignore
-            view.add_item(btn)  # type: ignore[arg-type]
-
-        header = f"**{section}**" + (" (truncated)" if truncated else "")
-        return header, view
-
     # --- execution ---------------------------------------------------------
     if not message.guild:
         await message.channel.send("Command must be used in a guild.")
@@ -254,7 +192,7 @@ async def cmd_list(message: discord.Message) -> None:
         items = mapping[section]
         if not items:
             continue
-        header, view = _create_section_view(
+        header, view = create_section_view(
             section, list(items), name_to_msgs, grocery_channel
         )
         await message.channel.send(header, view=view)

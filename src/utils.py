@@ -1,4 +1,5 @@
 import discord
+from typing import Dict, List, Tuple
 
 
 async def fetch_channel_messages(
@@ -21,3 +22,73 @@ async def fetch_channel_messages(
     if not messages:
         raise ValueError(f"No messages found in {channel_name} channel.")
     return [m.content for m in messages]
+
+
+def create_section_view(
+    section: str,
+    items: List[str],
+    name_to_msgs: Dict[str, List[discord.Message]],
+    grocery_channel: discord.TextChannel,
+) -> Tuple[str, discord.ui.View]:
+    """Build the header text and a discord.ui.View of buttons for a section.
+    - Truncation to 25 items (adds '(truncated)' to header)
+    - Duplicate numbering suffix ' (n)'
+    - Stable ordering of provided items
+    - Button callback that deletes original message if unchanged
+    """
+    view = discord.ui.View(timeout=600)
+    truncated = False
+    if len(items) > 25:
+        items = items[:25]
+        truncated = True
+    dup_counts: Dict[str, int] = {}
+    for item_name in items:
+        base = item_name
+        dup_counts[base] = dup_counts.get(base, 0) + 1
+        shown = f"{base} ({dup_counts[base]})" if dup_counts[base] > 1 else base
+        safe_label = (shown[:80] + "…") if len(shown) > 81 else shown
+        source_list = name_to_msgs.get(base, [])
+        if not source_list:
+            continue
+        src_msg = source_list.pop(0)
+
+        def make_cb(msg_id: int, msg_content: str, shown_label: str):
+            async def _cb(
+                interaction: discord.Interaction,
+            ) -> None:  # pragma: no cover - network interaction
+                channel = grocery_channel
+                if not channel:
+                    await interaction.response.send_message(
+                        "Channel missing.", ephemeral=True
+                    )
+                    return
+                try:
+                    target = await channel.fetch_message(msg_id)
+                    if target.content == msg_content:
+                        await target.delete()
+                        await interaction.response.send_message(
+                            f"Removed: {shown_label}", ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message(
+                            "Item changed; not removed.", ephemeral=True
+                        )
+                except Exception:
+                    await interaction.response.send_message(
+                        "Original not found.", ephemeral=True
+                    )
+
+            return _cb
+
+        btn = discord.ui.Button(  # type: ignore
+            label=safe_label,
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"groce:{src_msg.id}",
+        )  # type: ignore[call-arg]
+        btn.callback = make_cb(
+            msg_id=src_msg.id, msg_content=src_msg.content, shown_label=shown
+        )  # type: ignore
+        view.add_item(btn)  # type: ignore[arg-type]
+
+    header = f"**{section}**" + (" (truncated)" if truncated else "")
+    return header, view
