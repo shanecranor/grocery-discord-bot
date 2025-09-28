@@ -1,6 +1,8 @@
 import discord
 from typing import Dict, List, Tuple
 
+from constants import LOG_CHANNEL_NAME
+
 
 async def fetch_channel_messages(
     message: discord.Message, channel_name: str
@@ -69,6 +71,29 @@ def create_section_view(
                         await interaction.response.send_message(
                             f"Removed: {shown_label}", ephemeral=True
                         )
+                        # attempt to log deletion in log channel
+                        try:  # pragma: no cover - network interaction
+                            if interaction.guild:
+                                log_channel = next(
+                                    (
+                                        c
+                                        for c in interaction.guild.text_channels
+                                        if c.name == LOG_CHANNEL_NAME
+                                    ),
+                                    None,
+                                )
+                                if log_channel:
+                                    await log_channel.send(
+                                        f"Item removed via button: '{msg_content}' (shown as '{shown_label}') by <@{interaction.user.id}>",
+                                        allowed_mentions=discord.AllowedMentions.none(),
+                                    )
+                                else:
+                                    print("Log channel not found; not logging removal.")
+                            else:
+                                print("Interaction not in guild; not logging removal.")
+                        except Exception:
+                            print(f"Error logging removal; ignoring.")
+                            pass
                     else:
                         await interaction.response.send_message(
                             "Item changed; not removed.", ephemeral=True
