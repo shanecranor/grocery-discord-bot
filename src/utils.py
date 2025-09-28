@@ -36,7 +36,7 @@ def create_section_view(
     - Truncation to 25 items (adds '(truncated)' to header)
     - Duplicate numbering suffix ' (n)'
     - Stable ordering of provided items
-    - Button callback that deletes original message if unchanged
+    - Button callback that deletes original message if unchanged and disables itself
     """
     view = discord.ui.View(timeout=600)
     truncated = False
@@ -54,65 +54,65 @@ def create_section_view(
             continue
         src_msg = source_list.pop(0)
 
-        def make_cb(msg_id: int, msg_content: str, shown_label: str):
-            async def _cb(
-                interaction: discord.Interaction,
-            ) -> None:  # pragma: no cover - network interaction
-                channel = grocery_channel
-                if not channel:
-                    await interaction.response.send_message(
-                        "Channel missing.", ephemeral=True
-                    )
-                    return
-                try:
-                    target = await channel.fetch_message(msg_id)
-                    if target.content == msg_content:
-                        await target.delete()
-                        await interaction.response.send_message(
-                            f"Removed: {shown_label}", ephemeral=True
-                        )
-                        # attempt to log deletion in log channel
-                        try:  # pragma: no cover - network interaction
-                            if interaction.guild:
-                                log_channel = next(
-                                    (
-                                        c
-                                        for c in interaction.guild.text_channels
-                                        if c.name == LOG_CHANNEL_NAME
-                                    ),
-                                    None,
-                                )
-                                if log_channel:
-                                    await log_channel.send(
-                                        f"Item removed via button: '{msg_content}' (shown as '{shown_label}') by <@{interaction.user.id}>",
-                                        allowed_mentions=discord.AllowedMentions.none(),
-                                    )
-                                else:
-                                    print("Log channel not found; not logging removal.")
-                            else:
-                                print("Interaction not in guild; not logging removal.")
-                        except Exception:
-                            print(f"Error logging removal; ignoring.")
-                            pass
-                    else:
-                        await interaction.response.send_message(
-                            "Item changed; not removed.", ephemeral=True
-                        )
-                except Exception:
-                    await interaction.response.send_message(
-                        "Original not found.", ephemeral=True
-                    )
-
-            return _cb
-
         btn = discord.ui.Button(  # type: ignore
             label=safe_label,
             style=discord.ButtonStyle.secondary,
             custom_id=f"groce:{src_msg.id}",
         )  # type: ignore[call-arg]
-        btn.callback = make_cb(
-            msg_id=src_msg.id, msg_content=src_msg.content, shown_label=shown
-        )  # type: ignore
+
+        async def button_callback(
+            interaction: discord.Interaction,
+            *,
+            _src_msg: discord.Message = src_msg,
+            _shown: str = shown,
+            _btn: discord.ui.Button = btn,  # type: ignore[type-arg]
+        ) -> None:  # pragma: no cover - network interaction
+            channel = grocery_channel
+            if not channel:
+                await interaction.response.send_message(
+                    "Channel missing.", ephemeral=True
+                )
+                return
+            try:
+                target = await channel.fetch_message(_src_msg.id)
+                if target.content == _src_msg.content:
+                    await target.delete()
+                    try:
+                        _btn.disabled = True
+                        if interaction.message:
+                            await interaction.message.edit(view=view)  # type: ignore[arg-type]
+                    except Exception:
+                        pass
+                    await interaction.response.send_message(
+                        f"Removed: {_shown}", ephemeral=True
+                    )
+                    try:  # pragma: no cover - network interaction
+                        if interaction.guild:
+                            log_channel = next(
+                                (
+                                    c
+                                    for c in interaction.guild.text_channels
+                                    if c.name == LOG_CHANNEL_NAME
+                                ),
+                                None,
+                            )
+                            if log_channel:
+                                await log_channel.send(
+                                    f"Item removed via button: '{_src_msg.content}' (shown as '{_shown}') by <@{interaction.user.id}>",
+                                    allowed_mentions=discord.AllowedMentions.none(),
+                                )
+                    except Exception:
+                        pass
+                else:
+                    await interaction.response.send_message(
+                        "Item changed; not removed.", ephemeral=True
+                    )
+            except Exception:
+                await interaction.response.send_message(
+                    "Original not found.", ephemeral=True
+                )
+
+        btn.callback = button_callback  # type: ignore
         view.add_item(btn)  # type: ignore[arg-type]
 
     header = f"**{section}**" + (" (truncated)" if truncated else "")
