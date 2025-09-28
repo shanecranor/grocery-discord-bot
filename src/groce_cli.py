@@ -79,9 +79,9 @@ async def cmd_clear(message: discord.Message) -> None:
     # Restrict to text channels for type safety
     if isinstance(message.channel, discord.TextChannel):
         await message.channel.purge()
+        await message.channel.send("Cleared all messages in this channel.")
     else:
         await message.channel.send("Cannot purge messages in this channel type.")
-    await message.channel.send("Cleared all messages in this channel.")
     return
 
 
