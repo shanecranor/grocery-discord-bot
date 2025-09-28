@@ -48,7 +48,12 @@ def create_section_view(
         base = item_name
         dup_counts[base] = dup_counts.get(base, 0) + 1
         shown = f"{base} ({dup_counts[base]})" if dup_counts[base] > 1 else base
-        safe_label = (shown[:80] + "…") if len(shown) > 81 else shown
+        MAX_LABEL_LENGTH = 80
+        safe_label = (
+            (shown[: MAX_LABEL_LENGTH - 1] + "…")
+            if len(shown) > MAX_LABEL_LENGTH
+            else shown
+        )
         source_list = name_to_msgs.get(base, [])
         if not source_list:
             continue
